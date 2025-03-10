@@ -37,3 +37,20 @@ class SpendsHttpClient:
             urljoin(self.base_url, '/api/spends/remove'), params={'ids': ids}
         )
         response.raise_for_status()
+
+    def all_spends(self, filter_params=None):
+        response = self.session.get(
+            urljoin(self.base_url, '/api/v2/spends/all'),
+            params=filter_params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def total_spends(self, filter_params=None):
+
+        response = self.session.get(
+            urljoin(self.base_url, '/api/v2/stat/total'),
+            params=filter_params
+        )
+        response.raise_for_status()
+        return response.json()
