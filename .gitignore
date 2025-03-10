@@ -40,3 +40,5 @@ out/
 
 ### gRPC generated files ###
 /niffler-grpc-common/src/generated/**
+
+__pycache__/
