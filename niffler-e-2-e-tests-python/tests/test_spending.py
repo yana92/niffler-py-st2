@@ -44,19 +44,22 @@ def test_add_category(spends_client, spend_db):
     browser.element('div[role="alert"]').should(have.text(f"You've added new category: {category_name}"))
     browser.element('//*[@id="root"]/main/div/div').should(have.text(category_name))
     categories = spends_client.get_categories()
-    category_id = (category.id for category in categories if category.name == category_name)
+    category_id = next((category.id for category in categories if category.name == category_name), None)
+    assert category_id is not None, 'В БД нет созданной категории у пользователя'
     spend_db.delete_category(category_id)
 
 
 @Pages.main_page
 @TestData.category('category for archive')
-def test_archived_category(category):
+def test_archived_category(category, spend_db):
     browser.open('http://frontend.niffler.dc/profile')
     browser.element(
         'div[class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-3w20vr"]'
     ).should(have.text(category.name)).element('button[aria-label="Archive category"]').click()
     browser.element('/html/body/div[2]/div[3]/div/div[2]/button[2]').click()
     browser.element('div[role="alert"]').should(have.text(f"Category {category.name} is archived"))
+    category_db = spend_db.get_categories_by_id(category.id)[0]
+    assert category_db.archived is True, 'В БД не изменилось значение archived c False на True'
 
 
 @mark.usefixtures('auth')
@@ -71,7 +74,7 @@ def test_show_archive_category(category_archived):
 @TestData.category(TEST_CATEGORY)
 @TestData.spends(TEST_SPENDINGS[0])
 def test_delete_one_spending(
-        category: Category, spends: Spend
+        category: Category, spends: Spend, spend_db
 ):
     browser.element('#spendings').should(have.text(spends.description))
     browser.element('#spendings tbody input[type=checkbox]').click()
@@ -83,6 +86,8 @@ def test_delete_one_spending(
     browser.all('#spendings tbody tr').should(have.size(0))
     assert browser.element('#spendings').should(have.text('There are no spendings')), \
         'На странице в разделе с тратами отсутсвует текст There are no spendings'
+    db_spend = spend_db.get_spends_by_id(spends.id)
+    assert db_spend == [], 'В БД присутсвует удаленная трата'
 
 
 @TestData.category(TEST_CATEGORY)
@@ -101,7 +106,8 @@ def test_add_spending(category: Category, envs):
 @Pages.main_page
 @TestData.category(TEST_CATEGORY)
 @mark.parametrize('multiple_spendings', [TEST_SPENDINGS], indirect=True)
-def test_delete_all_spendings(multiple_spendings: list[dict], category: Category):
+def test_delete_all_spendings(multiple_spendings: list[dict], category: Category,
+                              spend_db, envs):
     browser.element('#spendings input[type=checkbox]').click()
     browser.element('#spendings button[id=delete]').click()
     browser.element('div[role="presentation"]>div[tabindex="0"]')
@@ -111,6 +117,7 @@ def test_delete_all_spendings(multiple_spendings: list[dict], category: Category
     browser.all('#spendings tbody tr').should(have.size(0))
     assert browser.element('#spendings').should(have.text('There are no spendings')), \
         'На странице в разделе с тратами отсутсвует текст There are no spendings'
+    assert spend_db.get_spends_by_username(envs.test_username) == [], 'Удалены не все траты'
 
 
 @Pages.main_page

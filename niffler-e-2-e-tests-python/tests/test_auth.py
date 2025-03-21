@@ -60,13 +60,6 @@ def test_login(envs):
     browser.element('input[name=password]').set_value(envs.test_password)
     browser.element('button[type=submit]').click()
     browser.driver.current_url == urljoin(envs.frontend_url, '/main')
-# @Pages.login_page
-# def test_login(app_user, frontend_url: str):
-#     username, password = app_user
-#     browser.element('input[name="username"]').set_value(username)
-#     browser.element('input[name=password]').set_value(password)
-#     browser.element('button[type=submit]').click()
-#     browser.driver.current_url == urljoin(frontend_url, '/main')
 
 
 @Pages.login_page
