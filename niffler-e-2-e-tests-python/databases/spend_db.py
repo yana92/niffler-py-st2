@@ -18,9 +18,9 @@ class SpendDb:
             statement = select(Category).where(Category.username == username)
             return session.exec(statement).all()
 
-    def delete_category(self, name: str):
+    def delete_category(self, id: str):
         with Session(self.engine) as session:
-            category = session.get(Category, name)
+            category = session.get(Category, id)
             session.delete(category)
             session.commit()
 

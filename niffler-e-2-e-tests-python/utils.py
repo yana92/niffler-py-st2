@@ -8,5 +8,5 @@ def random_string(length=5):
     Поумолчанию 5 символов
     """
     letters = string.ascii_letters
-    result_str = ''.join(random.choice(letters) for i in range(length))
+    result_str = ''.join(random.choice(letters) for _ in range(length))
     return result_str

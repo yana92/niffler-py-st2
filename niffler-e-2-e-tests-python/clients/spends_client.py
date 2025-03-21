@@ -29,6 +29,14 @@ class SpendsHttpClient:
         response.raise_for_status()
         return Category.model_validate(response.json())
 
+    def archive_category(self, category: Category):
+        response = self.session.patch(
+            urljoin(self.base_url, '/api/categories/update'),
+            json=category.model_dump()
+        )
+        response.raise_for_status()
+        return Category.model_validate(response.json())
+
     def add_spends(self, spend: AddSpend) -> SpendResponse:
         response = self.session.post(urljoin(self.base_url, '/api/spends/add'),
                                      json=spend.model_dump())
