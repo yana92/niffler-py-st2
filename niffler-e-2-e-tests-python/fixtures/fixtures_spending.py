@@ -1,44 +1,44 @@
 import pytest
 
-
-@pytest.fixture(scope="function", params=[])
-def category(request, spends_client) -> str:
-    category_name = request.param
-    current_catigories = spends_client.get_categories()
-    category_names = [category['name'] for category in current_catigories]
-    if category_name not in category_names:
-        spends_client.add_category(category_name)
-
-    return category_name
+from models.spend import Spend, SpendResponse
 
 
 @pytest.fixture(params=[])
-def spends(request, spends_client):
+def category(request, spends_client, spend_db) -> str:
+    category_name = request.param
+    current_categories = spends_client.get_categories()
+    category_added = next((
+        category for category in current_categories if category.name == category_name
+    ), None)
+    if category_added is None:
+        category_added = spends_client.add_category(category_name)
+    yield category_added.name
+    spendings = spend_db.get_category_spends(category_added.id)
+    spendings_ids = [spend.id for spend in spendings]
+    if len(spendings_ids) > 0:
+        spends_client.remove_spends(spendings_ids)
+    spend_db.delete_category(category_added.id)
+
+
+@pytest.fixture(params=[])
+def spends(request, spends_client) -> Spend:
     spend = spends_client.add_spends(request.param)
     yield spend
-    try:
-        all_spends = spends_client.all_spends()['content']
-        spend_ids = [s['id'] for s in all_spends]
-        if spend['id'] in spend_ids:
-            spends_client.remove_spends(ids=[spend['id']])
-    except Exception:
-        pass
+    all_spends = spends_client.all_spends()
+    if spend.id in [spend.id for spend in all_spends]:
+        spends_client.remove_spends([spend.id])
 
 
 @pytest.fixture(params=[])
-def multiple_spendings(spends_client, request):
+def multiple_spendings(spends_client, request) -> list[SpendResponse]:
     spendings_data = request.param
     spendings = [spends_client.add_spends(spend) for spend in spendings_data]
     yield spendings
-    try:
-        # TODO проверить наличие траты перед удалением
-        all_spends = spends_client.all_spends()['content']
-        spend_ids = [s['id'] for s in all_spends]
-        for spending in spendings:
-            if spending['id'] in spend_ids:
-                spends_client.remove_spends(ids=[spending['id']])
-    except Exception:
-        pass
+
+    all_spends = spends_client.all_spends()
+    for test_spend in all_spends:
+        if test_spend.id in [spend.id for spend in all_spends]:
+            spends_client.remove_spends([test_spend.id])
 
 
 @pytest.fixture(params=[None])
