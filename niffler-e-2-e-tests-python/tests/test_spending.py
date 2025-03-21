@@ -5,7 +5,7 @@ from pytest import mark
 from marks import Pages, TestData
 from selene import browser, have, by
 
-from tests.utils import random_string
+from utils import random_string
 
 TEST_CATEGORY = 'school'
 

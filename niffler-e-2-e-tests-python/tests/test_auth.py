@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 from pytest import mark
 from selene import browser, have
 from marks import Pages
-from tests.utils import random_string
+from utils import random_string
 
 
 @Pages.login_page
