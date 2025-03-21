@@ -55,9 +55,35 @@ def test_logout(auth_url: str):
 
 
 @mark.usefixtures('logout')
+@Pages.login_page
 def test_login(app_user, frontend_url: str):
     username, password = app_user
     browser.element('input[name="username"]').set_value(username)
     browser.element('input[name=password]').set_value(password)
     browser.element('button[type=submit]').click()
     browser.driver.current_url == urljoin(frontend_url, '/main')
+
+
+@Pages.login_page
+def test_auth_invalid_password(app_user):
+    username, password = app_user
+    browser.element('input[name=username]').set_value(username)
+    browser.element('input[name=password]').set_value(f"{password}_")
+    browser.element('button[type=submit]').click()
+    browser.element('form[action="/login"]').should(have.text('Неверные учетные данные пользователя'))
+
+
+@Pages.login_page
+def test_auth_invalid_username(app_user):
+    username, password = app_user
+    browser.element('input[name=username]').set_value(f"{username}1")
+    browser.element('input[name=password]').set_value(password)
+    browser.element('button[type=submit]').click()
+    browser.element('form[action="/login"]').should(have.text('Неверные учетные данные пользователя'))
+
+
+@mark.usefixtures('logout')
+@Pages.register_page
+def test_redirect_to_login_from_register():
+    browser.element('.form__link').should(have.text('Log in!')).click()
+    browser.driver.current_url == 'http://auth.niffler.dc:9000/login'

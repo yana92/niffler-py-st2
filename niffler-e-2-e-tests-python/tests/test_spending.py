@@ -16,6 +16,34 @@ def test_spending_title_exists():
 
 
 @Pages.main_page
+@Pages.profile_page
+def test_add_category():
+    browser.open('http://frontend.niffler.dc/profile')
+    category = 'Test added category'
+    browser.element('main h2').should(have.text('Profile'))
+    browser.element('#category').set_value(category).press_enter()
+    browser.element('div[role="alert"]').should(have.text(f"You've added new category: {category}"))
+    browser.element('//*[@id="root"]/main/div/div').should(have.text(category))
+
+
+@Pages.main_page
+@TestData.category('category for archive')
+def test_archived_category(category):
+    browser.open('http://frontend.niffler.dc/profile')
+    browser.element('div[class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-3w20vr"]').should(have.text(category)).element('button[aria-label="Archive category"]').click()
+    browser.element('/html/body/div[2]/div[3]/div/div[2]/button[2]').click()
+    browser.element('div[role="alert"]').should(have.text(f"Category {category} is archived"))
+
+
+@mark.usefixtures('auth')
+@TestData.category_archived('category for archive 3')
+def test_show_archive_category(category_archived):
+    browser.open('http://frontend.niffler.dc/profile')
+    browser.element('input[type="checkbox"]').click()
+    browser.element('//*[@id="root"]/main/div/div').should(have.text(category_archived['name']))
+
+
+@Pages.main_page
 @TestData.category(TEST_CATEGORY)
 @TestData.spends({
         "amount": "97",

@@ -59,56 +59,27 @@ def main_page(auth, frontend_url):
 
 
 @pytest.fixture()
-def login_page(auth_url):
+def login_page(logout, auth_url):
     browser.open(urljoin(auth_url, '/login'))
 
 
 @pytest.fixture()
-def register_page(auth_url):
+def register_page(logout, auth_url):
     browser.open(urljoin(auth_url, '/register'))
 
 
 @pytest.fixture()
-def logout(main_page, auth_url):
-# =======
-# from pytest import fixture
-# from selene import browser, have
-#
-# from utils import random_string
-#
-
-# @fixture(scope="session")
-# def user():
-#     username = random_string()
-#     password = random_string(7)
-#     browser.open('http://auth.niffler.dc:9000/register')
-#     browser.element('#username').set_value(username)
-#     browser.element('#password').set_value(password)
-#     browser.element('#passwordSubmit').set_value(password)
-#     browser.element('button[type="submit"]').click()
-#     return {
-#         'username': username,
-#         'password': password
-#     }
+def profile_page(auth, frontend_url):
+    browser.open(urljoin(frontend_url, '/profile'))
 
 
-# @fixture(scope='module')
-# def login(user):
-#     browser.open('http://frontend.niffler.dc')
-#     token = browser.driver.execute_script(
-#             'return window.localStorage.getItem("id_token")'
-#     )
-#     if token is None:
-#         browser.open('http://frontend.niffler.dc')
-#         browser.element('input[name=username]').set_value(user['username'])
-#         browser.element('input[name=password]').set_value(user['password'])
-#         browser.element('button[type=submit]').click()
-#     token = browser.driver.execute_script('return window.localStorage.getItem("id_token")')
-#     return token
+@pytest.fixture()
+def friends_page(frontend_url):
+    browser.open(urljoin(frontend_url, '/people/friends'))
 
 
-# @fixture()
-# def logout():
+@pytest.fixture()
+def logout(auth_url):
     browser.open('http://frontend.niffler.dc')
     if browser.driver.execute_script(
             'return window.localStorage.getItem("id_token")'
@@ -117,3 +88,4 @@ def logout(main_page, auth_url):
         browser.element('//*[@id="account-menu"]/div[3]/ul/li[4]').click()
         # browser.element('/html/body/div[2]/div[3]/div/div[2]/button[2]').click()
         browser.element('div[role="presentation"]').should(have.text('Log out')).click()
+

@@ -13,6 +13,16 @@ def category(request, spends_client) -> str:
 
 
 @pytest.fixture(params=[])
+def category_archived(request, spends_client):
+    category_name = request.param
+    category = spends_client.add_category(category_name)
+    data = category.copy()
+    data['archived'] = True
+    category_archived = spends_client.archive_category(body=data)
+    return category_archived
+
+
+@pytest.fixture(params=[])
 def spends(request, spends_client):
     spend = spends_client.add_spends(request.param)
     yield spend
@@ -31,7 +41,6 @@ def multiple_spendings(spends_client, request):
     spendings = [spends_client.add_spends(spend) for spend in spendings_data]
     yield spendings
     try:
-        # TODO проверить наличие траты перед удалением
         all_spends = spends_client.all_spends()['content']
         spend_ids = [s['id'] for s in all_spends]
         for spending in spendings:

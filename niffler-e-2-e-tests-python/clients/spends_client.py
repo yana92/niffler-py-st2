@@ -27,7 +27,15 @@ class SpendsHttpClient:
         response.raise_for_status()
         return response.json()
 
-    def add_spends(self, body):
+    def archive_category(self, body: dict):
+        response = self.session.patch(
+            urljoin(self.base_url, '/api/categories/update'),
+            json=body
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def add_spends(self, body: dict):
         response = self.session.post(urljoin(self.base_url, '/api/spends/add'), json=body)
         response.raise_for_status()
         return response.json()
