@@ -7,9 +7,9 @@ from utils import random_string
 
 
 @Pages.login_page
-def test_redirect_to_register_page(auth_url: str):
+def test_redirect_to_register_page(envs):
     browser.element('.form__register').click()
-    assert browser.driver.current_url == f'{auth_url}/register'
+    assert browser.driver.current_url == f'{envs.auth_url}/register'
     browser.element('#register-form').should(have.text('Sign up'))
 
 
@@ -42,12 +42,12 @@ def test_sign_up_invalid_password(length: int):
 
 
 @Pages.main_page
-def test_logout(auth_url: str):
+def test_logout(envs):
     browser.element('button[aria-label="Menu"]').click()
     browser.all('ul[role="menu"] li[role="menuitem"]').should(have.size(4))
     browser.element('//*[@id="account-menu"]/div[3]/ul/li[4]').click()
     browser.element('/html/body/div[2]/div[3]/div/div[2]/button[2]').click()
-    assert browser.driver.current_url == urljoin(auth_url, '/login')
+    assert browser.driver.current_url == urljoin(envs.auth_url, '/login')
     assert browser.element('form[action="/login"]')
     assert browser.driver.execute_script(
         'return window.localStorage.getItem("id_token")'
@@ -55,29 +55,25 @@ def test_logout(auth_url: str):
 
 
 @mark.usefixtures('logout')
-@Pages.login_page
-def test_login(app_user, frontend_url: str):
-    username, password = app_user
-    browser.element('input[name="username"]').set_value(username)
-    browser.element('input[name=password]').set_value(password)
+def test_login(envs):
+    browser.element('input[name="username"]').set_value(envs.test_username)
+    browser.element('input[name=password]').set_value(envs.test_password)
     browser.element('button[type=submit]').click()
-    browser.driver.current_url == urljoin(frontend_url, '/main')
+    browser.driver.current_url == urljoin(envs.frontend_url, '/main')
 
 
 @Pages.login_page
-def test_auth_invalid_password(app_user):
-    username, password = app_user
-    browser.element('input[name=username]').set_value(username)
-    browser.element('input[name=password]').set_value(f"{password}_")
+def test_auth_invalid_password(envs):
+    browser.element('input[name=username]').set_value(envs.test_username)
+    browser.element('input[name=password]').set_value(f"{envs.test_password}_")
     browser.element('button[type=submit]').click()
     browser.element('form[action="/login"]').should(have.text('Неверные учетные данные пользователя'))
 
 
 @Pages.login_page
-def test_auth_invalid_username(app_user):
-    username, password = app_user
-    browser.element('input[name=username]').set_value(f"{username}1")
-    browser.element('input[name=password]').set_value(password)
+def test_auth_invalid_username(envs):
+    browser.element('input[name=username]').set_value(f"{envs.test_username}1")
+    browser.element('input[name=password]').set_value(envs.test_password)
     browser.element('button[type=submit]').click()
     browser.element('form[action="/login"]').should(have.text('Неверные учетные данные пользователя'))
 

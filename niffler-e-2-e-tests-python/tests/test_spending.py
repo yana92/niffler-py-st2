@@ -5,155 +5,138 @@ from pytest import mark
 from marks import Pages, TestData
 from selene import browser, have, by
 
+from models.spend import Spend, AddSpend, AddCategory, Category
 from utils import random_string
 
 TEST_CATEGORY = 'school'
+TEST_CATEGORY_MODEL = AddCategory(name=TEST_CATEGORY)
+TEST_SPENDINGS = [
+    AddSpend(
+        amount=97.5,
+        description=f"Test description {random_string()}",
+        currency="RUB",
+        spendDate="2025-03-05T20:32:27.999Z",
+        category=TEST_CATEGORY_MODEL
+    ),
+    AddSpend(
+        amount=197.5,
+        description=f"Test description {random_string()}",
+        currency="RUB",
+        spendDate="2025-03-05T20:32:27.999Z",
+        category=TEST_CATEGORY_MODEL
+    )
+]
 
 
 @Pages.main_page
 def test_spending_title_exists():
-    browser.element('#spendings').should(have.text('History of Spendings'))
+    assert browser.element('#spendings').should(have.text('History of Spendings')), \
+        'На странице нет ожидаемого title с текстом History of Spendings'
 
 
 @Pages.main_page
 @Pages.profile_page
-def test_add_category():
+def test_add_category(spends_client, spend_db):
     browser.open('http://frontend.niffler.dc/profile')
-    category = 'Test added category'
+    category_name = 'Test added category'
     browser.element('main h2').should(have.text('Profile'))
-    browser.element('#category').set_value(category).press_enter()
-    browser.element('div[role="alert"]').should(have.text(f"You've added new category: {category}"))
-    browser.element('//*[@id="root"]/main/div/div').should(have.text(category))
+    browser.element('#category').set_value(category_name).press_enter()
+    browser.element('div[role="alert"]').should(have.text(f"You've added new category: {category_name}"))
+    browser.element('//*[@id="root"]/main/div/div').should(have.text(category_name))
+    categories = spends_client.get_categories()
+    category_id = next((category.id for category in categories if category.name == category_name), None)
+    assert category_id is not None, 'В БД нет созданной категории у пользователя'
+    spend_db.delete_category(category_id)
 
 
 @Pages.main_page
 @TestData.category('category for archive')
-def test_archived_category(category):
+def test_archived_category(category, spend_db):
     browser.open('http://frontend.niffler.dc/profile')
-    browser.element('div[class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-3w20vr"]').should(have.text(category)).element('button[aria-label="Archive category"]').click()
+    browser.element(
+        'div[class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-3w20vr"]'
+    ).should(have.text(category.name)).element('button[aria-label="Archive category"]').click()
     browser.element('/html/body/div[2]/div[3]/div/div[2]/button[2]').click()
-    browser.element('div[role="alert"]').should(have.text(f"Category {category} is archived"))
+    browser.element('div[role="alert"]').should(have.text(f"Category {category.name} is archived"))
+    category_db = spend_db.get_categories_by_id(category.id)[0]
+    assert category_db.archived is True, 'В БД не изменилось значение archived c False на True'
 
 
 @mark.usefixtures('auth')
-@TestData.category_archived('category for archive 3')
+@TestData.category('category for archive 3')
 def test_show_archive_category(category_archived):
     browser.open('http://frontend.niffler.dc/profile')
     browser.element('input[type="checkbox"]').click()
-    browser.element('//*[@id="root"]/main/div/div').should(have.text(category_archived['name']))
+    browser.element('//*[@id="root"]/main/div/div').should(have.text(category_archived.name))
 
 
 @Pages.main_page
 @TestData.category(TEST_CATEGORY)
-@TestData.spends({
-        "amount": "97",
-        "description": f"Test description {random_string()}",
-        "currency": "RUB",
-        "spendDate": "2025-03-05T20:32:27.999Z",
-        "category": {
-            "name": TEST_CATEGORY
-        }
-    })
+@TestData.spends(TEST_SPENDINGS[0])
 def test_delete_one_spending(
-        frontend_url: str, category: str, spends: dict, spends_client
+        category: Category, spends: Spend, spend_db
 ):
-    browser.element('#spendings').should(have.text(spends['description']))
+    browser.element('#spendings').should(have.text(spends.description))
     browser.element('#spendings tbody input[type=checkbox]').click()
     browser.element('#spendings button[id=delete]').click()
     browser.element('div[role="presentation"]>div[tabindex="0"]')
     browser.element('/html/body/div[2]/div[3]/div/div[2]/button[2]').click()
+    assert browser.element('div[role="presentation"]>div[tabindex="-1"]'), \
+        'Не удалось удалить трату, диалоговое окно не закрылось'
     browser.all('#spendings tbody tr').should(have.size(0))
-    browser.element('#spendings').should(have.text('There are no spendings'))
+    assert browser.element('#spendings').should(have.text('There are no spendings')), \
+        'На странице в разделе с тратами отсутсвует текст There are no spendings'
+    db_spend = spend_db.get_spends_by_id(spends.id)
+    assert db_spend == [], 'В БД присутсвует удаленная трата'
 
 
 @TestData.category(TEST_CATEGORY)
 @Pages.main_page
-def test_add_spending(category: str, frontend_url: str, spends_client):
+def test_add_spending(category: Category, envs):
     description = f'Test description {random_string()}'
     browser.element('//*[@id="root"]/header/div/div[2]/a').click()
     browser.element('input[name="amount"]').set_value(15000)
-    browser.element(f'input[name="category"]').set_value(category)
+    browser.element(f'input[name="category"]').set_value(category.name)
     browser.element('input[name="description"]').set_value(description)
     browser.element('button[type="submit"]').click()
-    assert browser.driver.current_url == urljoin(frontend_url, '/main')
-    browser.element(by.text(description))
+    assert browser.element(by.text(description)), \
+        'На странице отсутсвует добавленная трата'
 
 
 @Pages.main_page
 @TestData.category(TEST_CATEGORY)
-@mark.parametrize('multiple_spendings', [[
-    {
-        "amount": "25000",
-        "description": f"QA.GURU Python Advanced 2",
-        "currency": "RUB",
-        "spendDate": "2025-03-05T20:32:27.999Z",
-        "category": {
-            "name": TEST_CATEGORY
-        }
-    },
-    {
-        "amount": "20000",
-        "description": f"QA.GURU Python Advanced 2",
-        "currency": "RUB",
-        "spendDate": "2025-03-05T20:32:27.999Z",
-        "category": {
-            "name": TEST_CATEGORY
-        }
-    }
-]], indirect=True)
-def test_delete_all_spendings(multiple_spendings: list[dict], category: str):
+@mark.parametrize('multiple_spendings', [TEST_SPENDINGS], indirect=True)
+def test_delete_all_spendings(multiple_spendings: list[dict], category: Category,
+                              spend_db, envs):
     browser.element('#spendings input[type=checkbox]').click()
     browser.element('#spendings button[id=delete]').click()
     browser.element('div[role="presentation"]>div[tabindex="0"]')
     browser.all('div[role=dialog] button[type=button]')[-1].should(have.text('Delete')).click()
+    assert browser.element('div[role="presentation"]>div[tabindex="-1"]'), \
+        'Не удалось удалить трату, диалоговое окно не закрылось'
     browser.all('#spendings tbody tr').should(have.size(0))
-    browser.element('#spendings').should(have.text('There are no spendings'))
+    assert browser.element('#spendings').should(have.text('There are no spendings')), \
+        'На странице в разделе с тратами отсутсвует текст There are no spendings'
+    assert spend_db.get_spends_by_username(envs.test_username) == [], 'Удалены не все траты'
 
 
 @Pages.main_page
 @TestData.category(TEST_CATEGORY)
-@mark.parametrize('multiple_spendings', [[
-    {
-        "amount": "25000",
-        "description": f"QA.GURU Python Advanced 2",
-        "currency": "RUB",
-        "spendDate": "2025-03-05T20:32:27.999Z",
-        "category": {
-            "name": TEST_CATEGORY
-        }
-    },
-    {
-        "amount": "20000",
-        "description": f"QA.GURU Python Advanced 2",
-        "currency": "RUB",
-        "spendDate": "2025-03-05T20:32:27.999Z",
-        "category": {
-            "name": TEST_CATEGORY
-        }
-    }
-]], indirect=True)
+@mark.parametrize('multiple_spendings', [TEST_SPENDINGS], indirect=True)
 def test_spendings_total_amount_one_category(
-        category: str, multiple_spendings: list[dict], total_spendings: dict
+        category: Category, multiple_spendings: list[dict], total_spendings: dict
 ):
-    browser.element('#legend-container li').should(have.text(
-        f'{category} {int(total_spendings["total"])} ₽'
-    ))
+    total = total_spendings["total"]
+    if total % 1 == 0:
+        total = int(total)
+    browser.driver.refresh()
+    assert browser.element('#legend-container li').should(have.text(
+        f'{category.name} {total} ₽'
+    )), 'Отображется некорректное значение total и категория'
 
 
 @Pages.main_page
-def test_redirect_to_spending_page(frontend_url: str):
+def test_redirect_to_spending_page(envs):
     browser.element('//*[@id="root"]/header/div/div[2]/a').click()
-    assert browser.driver.current_url == urljoin(frontend_url, '/spending')
-
-
-@TestData.category(TEST_CATEGORY)
-@Pages.main_page
-def test_add_spending(category: str, frontend_url: str, spends_client):
-    description = f'Test description {random_string()}'
-    browser.element('//*[@id="root"]/header/div/div[2]/a').click()
-    browser.element('input[name="amount"]').set_value(15000)
-    browser.element(f'input[name="category"]').set_value(category)
-    browser.element('input[name="description"]').set_value(description)
-    browser.element('button[type="submit"]').click()
-    assert browser.driver.current_url == urljoin(frontend_url, '/main')
-    browser.element(by.text(description))
+    assert browser.driver.current_url == urljoin(envs.frontend_url, '/spending'), \
+        'Текущий url не соответствует ожидаемому'

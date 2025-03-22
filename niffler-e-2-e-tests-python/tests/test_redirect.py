@@ -11,7 +11,6 @@ class TestRedirect:
         browser.element('button[aria-label="Menu"]').click()
         browser.all('ul[role="menu"] li[role="menuitem"]').should(have.size(4))
         browser.element('//*[@id="account-menu"]/div[3]/ul/li[2]').click()
-        # Ожидаемый результат
         assert browser.driver.current_url == 'http://frontend.niffler.dc/people/friends'
 
     @Pages.friends_page

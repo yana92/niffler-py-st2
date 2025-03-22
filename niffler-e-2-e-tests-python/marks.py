@@ -15,5 +15,5 @@ class TestData:
         "category_archived", [x], indirect=True
     )
     spends = lambda x: pytest.mark.parametrize(
-        "spends", [x], indirect=True, ids=lambda param: param["description"]
+        "spends", [x], indirect=True, ids=lambda param: param.description
     )
